@@ -12,11 +12,16 @@ public class VarDeclNode extends Node {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
+        Object val = 0; 
+        if (initialValue != null) {
+            val = initialValue.evaluate(env);
+        }
+        env.define(name, val);
     }
         
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

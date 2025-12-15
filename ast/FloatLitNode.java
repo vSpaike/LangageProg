@@ -8,11 +8,11 @@ public class FloatLitNode extends Node {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
     }
     
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return value;
     }
 }

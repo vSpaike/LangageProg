@@ -11,14 +11,14 @@ public class BlockNode extends InstrNode {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
         for (InstrNode instr : instrs) {
-            instr.execute();
+            instr.execute(env);
         }
     }
         
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

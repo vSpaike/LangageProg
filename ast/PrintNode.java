@@ -8,13 +8,13 @@ public class PrintNode extends InstrNode {
     }
 
     @Override
-    public void execute() {
-        Object value = expression.evaluate();
-        System.out.println(value);
+    public void execute(Environment env) {
+        Object val = expression.evaluate(env);
+        System.out.println(val);
     }
-        
+
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

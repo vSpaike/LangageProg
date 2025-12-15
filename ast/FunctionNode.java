@@ -17,12 +17,12 @@ public class FunctionNode extends Node {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
         System.out.println("Fonction: " + name + " de type " + returnType);
     }
         
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

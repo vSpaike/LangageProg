@@ -10,13 +10,13 @@ public class WhileNode extends InstrNode {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
         System.out.println("While loop...");
-        body.execute();
+        body.execute(env);
     }
         
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

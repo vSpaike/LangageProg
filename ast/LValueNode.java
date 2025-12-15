@@ -10,11 +10,11 @@ public class LValueNode extends Node {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
     }
     
     @Override
-    public Object evaluate() {
-        return "Valeur de " + name;
+    public Object evaluate(Environment env) {
+        return env.get(name); 
     }
 }

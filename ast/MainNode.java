@@ -1,4 +1,5 @@
 package ast;
+
 import java.util.*;
 
 public class MainNode extends Node {
@@ -11,14 +12,17 @@ public class MainNode extends Node {
     }
 
     @Override
-    public void execute() {
-        for (InstrNode instr : instrs) {
-            instr.execute();
+    public void execute(Environment env) {
+        for (VarDeclNode v : vars) {
+            v.execute(env);
+        }
+        for (InstrNode i : instrs) {
+            i.execute(env);
         }
     }
-        
+
     @Override
-    public Object evaluate() {
-        return null;  
+    public Object evaluate(Environment env) {
+        return null;
     }
 }

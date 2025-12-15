@@ -12,13 +12,13 @@ public class BinOpNode extends Node {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
     }
     
     @Override
-    public Object evaluate() {
-        Object leftVal = left.evaluate();
-        Object rightVal = right.evaluate();
+    public Object evaluate(Environment env) {
+        Object leftVal = left.evaluate(env);
+        Object rightVal = right.evaluate(env);
         
         if (operator.equals("+")) {
             if (leftVal instanceof Integer) {

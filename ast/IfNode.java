@@ -12,16 +12,16 @@ public class IfNode extends InstrNode {
     }
 
     @Override
-    public void execute() {
+    public void execute(Environment env) {
         System.out.println("If condition...");
-        ifBlock.execute();
+        ifBlock.execute(env);
         if (elseBlock != null) {
-            elseBlock.execute();
+            elseBlock.execute(env);
         }
     }    
     
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }

@@ -12,12 +12,13 @@ public class AssignNode extends InstrNode {
     }
 
     @Override
-    public void execute() {
-        System.out.println("Assignment: " + lvalue.name + " " + operator + " ...");
+    public void execute(Environment env) {
+        Object val = expression.evaluate(env);
+        env.assign(lvalue.name, val); 
     }
         
     @Override
-    public Object evaluate() {
+    public Object evaluate(Environment env) {
         return null;  
     }
 }
