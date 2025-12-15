@@ -25,71 +25,69 @@ public interface MiniLangParserConstants {
   /** RegularExpression Id. */
   int WHILE = 8;
   /** RegularExpression Id. */
-  int FOR = 9;
+  int RETURN = 9;
   /** RegularExpression Id. */
-  int RETURN = 10;
+  int PRINT = 10;
   /** RegularExpression Id. */
-  int PRINT = 11;
+  int INT = 11;
   /** RegularExpression Id. */
-  int INT = 12;
+  int FLOAT = 12;
   /** RegularExpression Id. */
-  int FLOAT = 13;
+  int BOOLEAN = 13;
   /** RegularExpression Id. */
-  int BOOLEAN = 14;
+  int TRUE = 14;
   /** RegularExpression Id. */
-  int TRUE = 15;
+  int FALSE = 15;
   /** RegularExpression Id. */
-  int FALSE = 16;
+  int LEN = 16;
   /** RegularExpression Id. */
-  int LEN = 17;
+  int PLUS = 17;
   /** RegularExpression Id. */
-  int PLUS = 18;
+  int MINUS = 18;
   /** RegularExpression Id. */
-  int MINUS = 19;
+  int MULT = 19;
   /** RegularExpression Id. */
-  int MULT = 20;
+  int DIV = 20;
   /** RegularExpression Id. */
-  int DIV = 21;
+  int MOD = 21;
   /** RegularExpression Id. */
-  int MOD = 22;
+  int ASSIGN = 22;
   /** RegularExpression Id. */
-  int ASSIGN = 23;
+  int PLUSASSIGN = 23;
   /** RegularExpression Id. */
-  int PLUSASSIGN = 24;
+  int MINUSASSIGN = 24;
   /** RegularExpression Id. */
-  int MINUSASSIGN = 25;
+  int MULTASSIGN = 25;
   /** RegularExpression Id. */
-  int MULTASSIGN = 26;
+  int DIVASSIGN = 26;
   /** RegularExpression Id. */
-  int DIVASSIGN = 27;
+  int EQ = 27;
   /** RegularExpression Id. */
-  int EQ = 28;
+  int NE = 28;
   /** RegularExpression Id. */
-  int NE = 29;
+  int LE = 29;
   /** RegularExpression Id. */
-  int LE = 30;
+  int LT = 30;
   /** RegularExpression Id. */
-  int LT = 31;
+  int GE = 31;
   /** RegularExpression Id. */
-  int GE = 32;
+  int GT = 32;
   /** RegularExpression Id. */
-  int GT = 33;
+  int AND = 33;
   /** RegularExpression Id. */
-  int AND = 34;
+  int OR = 34;
   /** RegularExpression Id. */
-  int OR = 35;
+  int NOT = 35;
   /** RegularExpression Id. */
-  int NOT = 36;
+  int IDENTIFIER = 36;
   /** RegularExpression Id. */
-  int IDENTIFIER = 37;
+  int INTEGER = 37;
   /** RegularExpression Id. */
-  int INTEGER = 38;
+  int FLOAT_LIT = 38;
   /** RegularExpression Id. */
-  int FLOAT_LIT = 39;
+  int LICOM = 39;
   /** RegularExpression Id. */
-  int LICOM = 40;
-  /** RegularExpression Id. */
-  int PACOM = 41;
+  int PACOM = 40;
 
   /** Lexical state. */
   int DEFAULT = 0;
@@ -105,7 +103,6 @@ public interface MiniLangParserConstants {
     "\"if\"",
     "\"else\"",
     "\"while\"",
-    "\"for\"",
     "\"return\"",
     "\"print\"",
     "\"int\"",
