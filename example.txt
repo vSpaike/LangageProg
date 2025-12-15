@@ -1,5 +1,6 @@
-program MonProgramme;
+program Example;
 
+/* Ceci est un commentaire*/
 
 var
   int x = 10;
@@ -31,7 +32,8 @@ main {
     print(i);
     i += 1;
   }
-  
+
+  // Ceci est aussi un commentaire
   afficher_result(z);
-  print(z);
+
 }

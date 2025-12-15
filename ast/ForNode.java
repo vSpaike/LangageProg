@@ -1,17 +1,22 @@
 package ast;
 
-public class WhileNode extends InstrNode {
+public class ForNode extends InstrNode {
+    public VarDeclNode initVar;
     public Node condition;
+    public Node increment;
     public BlockNode body;
 
-    public WhileNode(Node condition, BlockNode body) {
+    public ForNode(VarDeclNode initVar, Node condition, Node increment, BlockNode body) {
+        this.initVar = initVar;
         this.condition = condition;
+        this.increment = increment;
         this.body = body;
     }
 
     @Override
     public void execute(Environment env) {
-        // Boucle TANT QUE la condition est vraie
+        initVar.execute(env);
+        
         while (true) {
             Object condValue = condition.evaluate(env);
             
@@ -24,11 +29,11 @@ public class WhileNode extends InstrNode {
                 isTrue = (Float) condValue != 0.0f;
             }
             
-            if (!isTrue) {
-                break;
-            }
+            if (!isTrue) break;
             
             body.execute(env);
+            
+            increment.evaluate(env);
         }
     }
 

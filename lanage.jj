@@ -28,6 +28,7 @@ TOKEN: {
 | < IF: "if" >
 | < ELSE: "else" >
 | < WHILE: "while" >
+| < FOR: "for" >
 | < RETURN: "return" >
 | < PRINT: "print" >
 | < INT: "int" >
@@ -57,15 +58,20 @@ TOKEN: {
 | < AND: "&&" >
 | < OR: "||" >
 | < NOT: "!" >
-
 | < IDENTIFIER: ["a"-"z", "A"-"Z", "_"] 
                (["a"-"z", "A"-"Z", "0"-"9", "_"])* >
 | < INTEGER: (["0"-"9"])+ >
 | < FLOAT_LIT: (["0"-"9"])+ "." (["0"-"9"])+ >
 }
 
-SKIP: { " " | "\t" | "\n" | "\r" }
+SPECIAL_TOKEN: {
+  < LICOM: "//" (~["\n","\r"])* >
+| < PACOM: "/*" (~["*"] | "*" ~["/"])* "*/" >
+}
 
+SKIP: { 
+  " " | "\t" | "\n" | "\r" 
+}
 
 /* ===== GRAMMAIRE ===== */
 
@@ -180,7 +186,7 @@ VarDeclNode decl_var() : {
   }
 }
 
-// instr = assign | appel_fonc | if | while | return | print | block | ";" ;
+// instr = assign | appel_fonc | if | while | for | return | print | block | ";" ;
 InstrNode instr() : {
   InstrNode n;
 } {
@@ -189,6 +195,7 @@ InstrNode instr() : {
     | ";" { n = new EmptyInstrNode(); }
     | n = if_()
     | n = while_()
+    | n = for_()
     | n = return_()
     | n = print_()
     | n = block()
@@ -337,6 +344,26 @@ WhileNode while_() : {
     return new WhileNode(cond, body);
   }
 }
+
+// for = "for", "(", decl_var, exp, ";", exp, ")", block ;
+ForNode for_() : {
+  VarDeclNode initVar;
+  Node condition;
+  Node increment;
+  BlockNode body;
+} {
+  <FOR> "(" 
+    initVar = decl_var()      // int i = 0;
+    condition = exp()          // i < 10
+    ";" 
+    increment = exp()          // i += 1
+  ")" 
+  body = block()
+  {
+    return new ForNode(initVar, condition, increment, body);
+  }
+}
+
 
 ReturnNode return_() : {
   Node value = null;

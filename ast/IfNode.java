@@ -13,15 +13,26 @@ public class IfNode extends InstrNode {
 
     @Override
     public void execute(Environment env) {
-        System.out.println("If condition...");
-        ifBlock.execute(env);
-        if (elseBlock != null) {
+        Object condValue = condition.evaluate(env);
+
+        boolean isTrueCondition = false;
+        if (condValue instanceof Boolean) {
+            isTrueCondition = (Boolean) condValue;
+        } else if (condValue instanceof Integer) {
+            isTrueCondition = (Integer) condValue != 0;
+        } else if (condValue instanceof Float) {
+            isTrueCondition = (Float) condValue != 0.0f;
+        }
+
+        if (isTrueCondition) {
+            ifBlock.execute(env);
+        } else if (elseBlock != null) {
             elseBlock.execute(env);
         }
-    }    
-    
+    }
+
     @Override
     public Object evaluate(Environment env) {
-        return null;  
+        return null;
     }
 }
