@@ -28,7 +28,6 @@ TOKEN: {
 | < IF: "if" >
 | < ELSE: "else" >
 | < WHILE: "while" >
-| < FOR: "for" >
 | < RETURN: "return" >
 | < PRINT: "print" >
 | < INT: "int" >
@@ -186,7 +185,7 @@ VarDeclNode decl_var() : {
   }
 }
 
-// instr = assign | appel_fonc | if | while | for | return | print | block | ";" ;
+// instr = assign | appel_fonc | if | while | return | print | block | ";" ;
 InstrNode instr() : {
   InstrNode n;
 } {
@@ -195,7 +194,6 @@ InstrNode instr() : {
     | ";" { n = new EmptyInstrNode(); }
     | n = if_()
     | n = while_()
-    | n = for_()
     | n = return_()
     | n = print_()
     | n = block()
@@ -342,25 +340,6 @@ WhileNode while_() : {
   <WHILE> "(" cond = exp() ")" body = block()
   {
     return new WhileNode(cond, body);
-  }
-}
-
-// for = "for", "(", decl_var, exp, ";", exp, ")", block ;
-ForNode for_() : {
-  VarDeclNode initVar;
-  Node condition;
-  Node increment;
-  BlockNode body;
-} {
-  <FOR> "(" 
-    initVar = decl_var()      // int i = 0;
-    condition = exp()          // i < 10
-    ";" 
-    increment = exp()          // i += 1
-  ")" 
-  body = block()
-  {
-    return new ForNode(initVar, condition, increment, body);
   }
 }
 
