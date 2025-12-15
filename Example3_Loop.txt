@@ -1,0 +1,18 @@
+program Example3_Loop;
+
+main {
+    int i = 0;
+    int sum = 0;
+
+    // Boucle WHILE
+    while (i < 5) {
+        sum += i;
+        i = i + 1; // Pas d'utilisation de i++ ici, car ASTInc n'est pas implémenté dans EvalVisitor
+    }
+
+    print(sum); // Attendu : 0 + 1 + 2 + 3 + 4 = 10
+
+    i = 10;
+    i++; 
+    print(i); // Attendu : 10
+}

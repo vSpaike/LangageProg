@@ -1,0 +1,667 @@
+options {
+  STATIC = false;
+  DEBUG_PARSER = false;
+  MULTI = true;            // Génère une classe par noeud (ASTProgram, ASTIf, etc.)
+  VISITOR = true;          // Génère l'interface Visitor pour parcourir l'arbre
+  NODE_DEFAULT_VOID = true; // Par défaut, pas de noeud créé 
+  NODE_PREFIX = "AST";     // Les classes s'appelleront ASTProgram, ASTIf...
+  JJTREE_OUTPUT_DIRECTORY = "src";
+  OUTPUT_DIRECTORY = "src";
+}
+
+PARSER_BEGIN(MiniLangParser)
+import java.io.*;
+import java.util.*;
+
+public class MiniLangParser {
+  public static void main(String[] args) throws Exception {
+    InputStream input = System.in;
+    if (args.length > 0) {
+        input = new FileInputStream(args[0]);
+    }
+    MiniLangParser parser = new MiniLangParser(input);
+    try {
+        SimpleNode root = parser.prog();
+        System.out.println("Parsing réussi !");
+        root.dump(">");
+        
+        System.out.println("Exécution...");
+        MiniLangParserVisitor visitor = new EvalVisitor();
+        root.jjtAccept(visitor, null);
+        
+    } catch (ParseException e) {
+        System.err.println("Erreur de syntaxe : " + e.getMessage());
+    }
+  }
+
+  static class EvalVisitor implements MiniLangParserVisitor {
+    private Deque<Map<String, Object>> scopes = new ArrayDeque<Map<String, Object>>();
+    private Map<String, SimpleNode> functions = new HashMap<String, SimpleNode>();
+    
+    public EvalVisitor() {
+        scopes.push(new HashMap<String, Object>());
+    }
+    
+    private void setVar(String name, Object val) {
+        for (Map<String, Object> scope : scopes) {
+            if (scope.containsKey(name)) {
+                scope.put(name, val);
+                return;
+            }
+        }
+        scopes.getLast().put(name, val);
+    }
+    
+    private void defineVar(String name, Object val) {
+        scopes.peek().put(name, val);
+    }
+    
+    private Object getVar(String name) {
+        for (Map<String, Object> scope : scopes) {
+            if (scope.containsKey(name)) {
+                return scope.get(name);
+            }
+        }
+        throw new RuntimeException("Variable inconnue : " + name);
+    }
+
+    public Object visit(SimpleNode node, Object data) {
+        return node.childrenAccept(this, data);
+    }
+
+    public Object visit(ASTProgram node, Object data) {
+        for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+            Node child = node.jjtGetChild(i);
+            if (child instanceof ASTFunction) visit((ASTFunction)child, data);
+            else if (child instanceof ASTProcedure) visit((ASTProcedure)child, data);
+            else if (child instanceof ASTGlobalVars) visit((ASTGlobalVars)child, data);
+            else if (child instanceof ASTMain) visit((ASTMain)child, data);
+        }
+        return null;
+    }
+    
+    public Object visit(ASTGlobalVars node, Object data) { return node.childrenAccept(this, data); }
+    public Object visit(ASTMain node, Object data) { return node.childrenAccept(this, data); }
+
+    public Object visit(ASTFunction node, Object data) {
+        String name = "";
+        for(int i=0; i<node.jjtGetNumChildren(); i++) {
+            Node child = node.jjtGetChild(i);
+            if (child instanceof ASTIdentifier) {
+                name = (String)((SimpleNode)child).jjtGetValue();
+                break;
+            }
+        }
+        functions.put(name, node);
+        return null;
+    }
+    
+    public Object visit(ASTProcedure node, Object data) { 
+        String name = "";
+        for(int i=0; i<node.jjtGetNumChildren(); i++) {
+            Node child = node.jjtGetChild(i);
+            if (child instanceof ASTIdentifier) {
+                name = (String)((SimpleNode)child).jjtGetValue();
+                break;
+            }
+        }
+        functions.put(name, node);
+        return null; 
+    }
+
+    public Object visit(ASTBlock node, Object data) {
+        for (int i = 0; i < node.jjtGetNumChildren(); i++) {
+            Object res = node.jjtGetChild(i).jjtAccept(this, data);
+            if (res != null) return res; 
+        }
+        return null;
+    }
+    
+    public Object visit(ASTVarDecl node, Object data) {
+        String name = (String)((SimpleNode)node.jjtGetChild(1)).jjtGetValue();
+        String type = (String)((SimpleNode)node.jjtGetChild(0)).jjtGetValue();
+        Object val = 0; 
+        
+        if (type.contains("[")) {
+             int size = 0;
+             int open = type.indexOf('[');
+             int close = type.indexOf(']');
+             if (close > open + 1) {
+                 try {
+                    size = Integer.parseInt(type.substring(open + 1, close));
+                 } catch (NumberFormatException e) {}
+             }
+             val = new Object[size];
+        }
+
+        if (node.jjtGetNumChildren() > 2) {
+            val = node.jjtGetChild(2).jjtAccept(this, data);
+        }
+        defineVar(name, val);
+        return null;
+    }
+    
+    public Object visit(ASTAssign node, Object data) {
+        SimpleNode target = (SimpleNode)node.jjtGetChild(0);
+        Object val = node.jjtGetChild(1).jjtAccept(this, data);
+        String op = (String)node.jjtGetValue();
+        
+        if (target instanceof ASTIdentifier) {
+            String varName = (String)target.jjtGetValue();
+            if (!op.equals("=")) {
+                Object current = getVar(varName);
+                if (current instanceof Integer && val instanceof Integer) {
+                    int c = (Integer)current;
+                    int v = (Integer)val;
+                    if (op.equals("+=")) val = c + v;
+                    else if (op.equals("-=")) val = c - v;
+                    else if (op.equals("*=")) val = c * v;
+                    else if (op.equals("/=")) val = c / v;
+                }
+            }
+            setVar(varName, val);
+        } else if (target instanceof ASTArrayAccess) {
+            ASTArrayAccess access = (ASTArrayAccess)target;
+            String varName = (String)((SimpleNode)access.jjtGetChild(0)).jjtGetValue();
+            Object indexObj = access.jjtGetChild(1).jjtAccept(this, data);
+            int index = (Integer)indexObj;
+            Object[] arr = (Object[])getVar(varName);
+            
+            if (!op.equals("=")) {
+                 Object current = arr[index];
+                 if (current instanceof Integer && val instanceof Integer) {
+                    int c = (Integer)current;
+                    int v = (Integer)val;
+                    if (op.equals("+=")) val = c + v;
+                    else if (op.equals("-=")) val = c - v;
+                    else if (op.equals("*=")) val = c * v;
+                    else if (op.equals("/=")) val = c / v;
+                 }
+            }
+            arr[index] = val;
+        }
+        return null;
+    }
+    
+    public Object visit(ASTPrint node, Object data) {
+        Object val = node.jjtGetChild(0).jjtAccept(this, data);
+        System.out.println(val);
+        return null;
+    }
+    
+    public Object visit(ASTIntLit node, Object data) { return Integer.parseInt((String)node.jjtGetValue()); }
+    public Object visit(ASTFloatLit node, Object data) { return Float.parseFloat((String)node.jjtGetValue()); }
+    public Object visit(ASTIdentifier node, Object data) { return getVar((String)node.jjtGetValue()); }
+    
+    public Object visit(ASTAdd node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof String || right instanceof String) {
+            return String.valueOf(left) + String.valueOf(right);
+        }
+        if (left instanceof Integer && right instanceof Integer) return (Integer)left + (Integer)right;
+        if (left instanceof Number && right instanceof Number) return ((Number)left).floatValue() + ((Number)right).floatValue();
+        return 0;
+    }
+
+    public Object visit(ASTFuncCall node, Object data) {
+        String funcName = (String)((SimpleNode)node.jjtGetChild(0)).jjtGetValue();
+        SimpleNode funcNode = functions.get(funcName);
+        if (funcNode == null) throw new RuntimeException("Fonction inconnue: " + funcName);
+        
+        List<Object> argValues = new ArrayList<Object>();
+        if (node.jjtGetNumChildren() > 1) {
+            ASTArgs argsNode = (ASTArgs)node.jjtGetChild(1);
+            for(int i=0; i<argsNode.jjtGetNumChildren(); i++) {
+                argValues.add(argsNode.jjtGetChild(i).jjtAccept(this, data));
+            }
+        }
+        
+        Map<String, Object> newScope = new HashMap<String, Object>();
+        ASTParams paramsNode = null;
+        ASTBlock blockNode = null;
+        
+        for(int i=0; i<funcNode.jjtGetNumChildren(); i++) {
+            Node child = funcNode.jjtGetChild(i);
+            if (child instanceof ASTParams) paramsNode = (ASTParams)child;
+            if (child instanceof ASTBlock) blockNode = (ASTBlock)child;
+        }
+        
+        if (paramsNode != null) {
+            for(int i=0; i<paramsNode.jjtGetNumChildren(); i++) {
+                ASTParam param = (ASTParam)paramsNode.jjtGetChild(i);
+                String paramName = (String)((SimpleNode)param.jjtGetChild(1)).jjtGetValue();
+                newScope.put(paramName, argValues.get(i));
+            }
+        }
+        
+        scopes.push(newScope);
+        Object result = null;
+        if (blockNode != null) result = blockNode.jjtAccept(this, data);
+        scopes.pop();
+        return result;
+    }
+    
+    public Object visit(ASTReturn node, Object data) {
+        if (node.jjtGetNumChildren() > 0) return node.jjtGetChild(0).jjtAccept(this, data);
+        return null;
+    }
+    
+    public Object visit(ASTProcCall node, Object data) { 
+         String funcName = (String)((SimpleNode)node.jjtGetChild(0)).jjtGetValue();
+        SimpleNode funcNode = functions.get(funcName);
+        if (funcNode == null) throw new RuntimeException("Procédure inconnue: " + funcName);
+        
+        List<Object> argValues = new ArrayList<Object>();
+        if (node.jjtGetNumChildren() > 1) {
+            ASTArgs argsNode = (ASTArgs)node.jjtGetChild(1);
+            for(int i=0; i<argsNode.jjtGetNumChildren(); i++) {
+                argValues.add(argsNode.jjtGetChild(i).jjtAccept(this, data));
+            }
+        }
+        
+        Map<String, Object> newScope = new HashMap<String, Object>();
+        ASTParams paramsNode = null;
+        ASTBlock blockNode = null;
+        
+        for(int i=0; i<funcNode.jjtGetNumChildren(); i++) {
+            Node child = funcNode.jjtGetChild(i);
+            if (child instanceof ASTParams) paramsNode = (ASTParams)child;
+            if (child instanceof ASTBlock) blockNode = (ASTBlock)child;
+        }
+        
+        if (paramsNode != null) {
+             for(int i=0; i<paramsNode.jjtGetNumChildren(); i++) {
+                ASTParam param = (ASTParam)paramsNode.jjtGetChild(i);
+                String paramName = (String)((SimpleNode)param.jjtGetChild(1)).jjtGetValue();
+                newScope.put(paramName, argValues.get(i));
+            }
+        }
+        
+        scopes.push(newScope);
+        if (blockNode != null) blockNode.jjtAccept(this, data);
+        scopes.pop();
+        return null;
+    }
+
+    public Object visit(ASTCompare node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        String op = (String)node.jjtGetValue();
+        if (left instanceof Number && right instanceof Number) {
+            float l = ((Number)left).floatValue();
+            float r = ((Number)right).floatValue();
+            if (op.equals(">")) return l > r;
+            if (op.equals("<")) return l < r;
+            if (op.equals(">=")) return l >= r;
+            if (op.equals("<=")) return l <= r;
+            if (op.equals("==")) return l == r;
+            if (op.equals("!=")) return l != r;
+        }
+        return false;
+    }
+
+    public Object visit(ASTIf node, Object data) {
+        Object cond = node.jjtGetChild(0).jjtAccept(this, data);
+        if (Boolean.TRUE.equals(cond)) {
+            return node.jjtGetChild(1).jjtAccept(this, data);
+        } else if (node.jjtGetNumChildren() > 2) {
+            return node.jjtGetChild(2).jjtAccept(this, data);
+        }
+        return null;
+    }
+
+    public Object visit(ASTWhile node, Object data) {
+        while (Boolean.TRUE.equals(node.jjtGetChild(0).jjtAccept(this, data))) {
+            Object res = node.jjtGetChild(1).jjtAccept(this, data);
+            if (res != null) return res;
+        }
+        return null;
+    }
+    
+    public Object visit(ASTInc node, Object data) { return null; }
+    public Object visit(ASTDec node, Object data) { return null; }
+
+    public Object visit(ASTType node, Object data) { return null; }
+    
+    public Object visit(ASTOr node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Boolean && right instanceof Boolean) return (Boolean)left || (Boolean)right;
+        return false;
+    }
+    public Object visit(ASTAnd node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Boolean && right instanceof Boolean) return (Boolean)left && (Boolean)right;
+        return false;
+    }
+    public Object visit(ASTSub node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Integer && right instanceof Integer) return (Integer)left - (Integer)right;
+        if (left instanceof Number && right instanceof Number) return ((Number)left).floatValue() - ((Number)right).floatValue();
+        return 0;
+    }
+    public Object visit(ASTMult node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Integer && right instanceof Integer) return (Integer)left * (Integer)right;
+        if (left instanceof Number && right instanceof Number) return ((Number)left).floatValue() * ((Number)right).floatValue();
+        return 0;
+    }
+    public Object visit(ASTDiv node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Number && right instanceof Number) {
+            if (((Number)right).floatValue() == 0) throw new RuntimeException("Division by zero");
+            if (left instanceof Integer && right instanceof Integer) return (Integer)left / (Integer)right;
+            return ((Number)left).floatValue() / ((Number)right).floatValue();
+        }
+        return 0;
+    }
+    public Object visit(ASTMod node, Object data) {
+        Object left = node.jjtGetChild(0).jjtAccept(this, data);
+        Object right = node.jjtGetChild(1).jjtAccept(this, data);
+        if (left instanceof Integer && right instanceof Integer) return (Integer)left % (Integer)right;
+        return 0;
+    }
+    public Object visit(ASTTrue node, Object data) { return Boolean.TRUE; }
+    public Object visit(ASTFalse node, Object data) { return Boolean.FALSE; }
+    public Object visit(ASTLen node, Object data) { return 0; }
+    public Object visit(ASTNot node, Object data) {
+        Object val = node.jjtGetChild(0).jjtAccept(this, data);
+        if (val instanceof Boolean) return !(Boolean)val;
+        return false;
+    }
+    public Object visit(ASTUnaryMinus node, Object data) {
+        Object val = node.jjtGetChild(0).jjtAccept(this, data);
+        if (val instanceof Integer) return -(Integer)val;
+        if (val instanceof Float) return -(Float)val;
+        return 0;
+    }
+    public Object visit(ASTArrayAccess node, Object data) {
+        String varName = (String)((SimpleNode)node.jjtGetChild(0)).jjtGetValue();
+        Object indexObj = node.jjtGetChild(1).jjtAccept(this, data);
+        int index = (Integer)indexObj;
+        Object[] arr = (Object[])getVar(varName);
+        return arr[index];
+    }
+    public Object visit(ASTStringLit node, Object data) {
+        return node.jjtGetValue();
+    }
+    public Object visit(ASTParams node, Object data) { return null; }
+    public Object visit(ASTParam node, Object data) { return null; }
+    public Object visit(ASTArgs node, Object data) { return null; }
+  }
+}
+PARSER_END(MiniLangParser)
+
+/* ===== SKIP : GESTION DES COMMENTAIRES ===== */
+SKIP: {
+  " " | "\t" | "\n" | "\r"
+  // Commentaire ligne //
+| < "//" (~["\n","\r"])* ("\n"|"\r"|"\r\n") >
+  // Commentaire bloc /* ... */
+| < "/*" (~["*"])* "*" ("*" | ~["*","/"] (~["*"])* "*")* "/" >
+}
+
+/* ===== TOKENS ===== */
+TOKEN: {
+  < PROGRAM: "program" >
+| < VAR: "var" >
+| < FUNC: "func" >
+| < PROC: "proc" >
+| < MAIN: "main" >
+| < IF: "if" >
+| < ELSE: "else" >
+| < WHILE: "while" >
+| < RETURN: "return" >
+| < PRINT: "print" >
+| < INT: "int" >
+| < FLOAT: "float" >
+| < BOOLEAN: "boolean" >
+| < STRING: "string" >
+| < TRUE: "true" >
+| < FALSE: "false" >
+| < LEN: "len" >
+
+/* OPÉRATEURS ARITHMÉTIQUES ET DE COMPARAISON */
+| < PLUS: "+" > | < MINUS: "-" > | < MULT: "*" > | < DIV: "/" > | < MOD: "%" >
+| < ASSIGN: "=" > | < PLUSASSIGN: "+=" > | < MINUSASSIGN: "-=" > | < MULTASSIGN: "*=" > | < DIVASSIGN: "/=" >
+| < EQ: "==" > | < NE: "!=" > | < LE: "<=" > | < LT: "<" > | < GE: ">=" > | < GT: ">" >
+| < AND: "&&" > | < OR: "||" > | < NOT: "!" >
+| < INC: "++" > | < DEC: "--" >
+
+/* LITÉRAUX */
+| < IDENTIFIER: ["a"-"z", "A"-"Z", "_"] (["a"-"z", "A"-"Z", "0"-"9", "_"])* >
+| < INTEGER: (["0"-"9"])+ >
+| < FLOAT_LIT: (["0"-"9"])+ "." (["0"-"9"])+ >
+| < STRING_LITERAL: "\"" (~["\""])* "\"" >
+}
+
+
+/* ===== GRAMMAIRE ===== */
+
+// prog = "program", identifier, ";", [ vars_globales ], { fonc | proc }, main ;
+SimpleNode prog() #Program : {} 
+{
+  <PROGRAM> Ident() ";"
+  
+  [ vars_globales() ]
+  
+  ( 
+      LOOKAHEAD(2) fonc() 
+    | proc() 
+  )*
+  
+  main()
+  <EOF>
+  { return jjtThis; }
+}
+
+// vars_globales = "var", { decl_var } ;
+void vars_globales() #GlobalVars : {} 
+{
+  <VAR> "{"
+  ( decl_var() )*
+  "}"
+}
+
+// main = "main", "{", { decl_var }, { instr }, "}" ;
+void main() #Main : {} 
+{
+  <MAIN> block()
+}
+
+// type = "int" | "float" | "boolean", [ array_dim ] ;
+void Type() #Type : { Token t; String dim=""; }
+{
+  ( t=<INT> | t=<FLOAT> | t=<BOOLEAN> | t=<STRING> )
+  [ dim=array_dim() ]
+  { jjtThis.value = t.image + dim; }
+}
+
+// array_dim = "[", [ integer ], "]" ;
+String array_dim() #void : { Token t; String ret = "[]"; }
+{
+  "[" [ t=<INTEGER> { ret = "[" + t.image + "]"; } ] "]"
+  { return ret; }
+}
+
+void Ident() #Identifier : { Token t; }
+{
+  t=<IDENTIFIER> { jjtThis.value = t.image; }
+}
+
+// decl_var = type, identifier, [ "=" exp ], ";" ;
+void decl_var() #VarDecl : {} 
+{
+  Type() Ident() [ "=" exp() ] ";"
+}
+
+// instr = assign | appel_fonc | if | while | return | print | block | ";" ;
+void instr() #void : {} 
+{
+  (
+      LOOKAHEAD(2) decl_var()
+    | LOOKAHEAD(lvalue() ("=" | "+=" | "-=" | "*=" | "/=")) assign()
+    | if_stmt()
+    | while_stmt()
+    | return_stmt()
+    | print_stmt()
+    | block()
+    | LOOKAHEAD(2) appel_proc()
+    | exp() ";"
+  )
+}
+
+// assign = lvalue, assign_op, exp, ";" ;
+void assign() #Assign : { Token t; } 
+{
+  lvalue() 
+  ( t="=" | t="+=" | t="-=" | t="*=" | t="/=" ) { jjtThis.value = t.image; }
+  exp() ";"
+}
+
+// Expressions avec opérateurs (respect de la priorité)
+void exp() #void : {} 
+{
+  exp_logi()
+}
+
+void exp_logi() #void : {} 
+{
+  exp_and()
+  ( <OR> exp_and() #Or(2) )*
+}
+
+void exp_and() #void : {} 
+{
+  exp_comp()
+  ( <AND> exp_comp() #And(2) )*
+}
+
+void exp_comp() #void : { Token t; } 
+{
+  exp_ari()
+  (
+    ( t=<GT> | t=<LT> | t=<GE> | t=<LE> | t=<EQ> | t=<NE> ) 
+    exp_ari() 
+    { jjtThis.value = t.image; } 
+    #Compare(2)
+  )*
+}
+
+void exp_ari() #void : {} 
+{
+  term()
+  ( 
+    <PLUS> term() #Add(2) 
+  | <MINUS> term() #Sub(2) 
+  )*
+}
+
+void term() #void : {} 
+{
+  factor()
+  ( 
+    <MULT> factor() #Mult(2) 
+  | <DIV> factor() #Div(2) 
+  | <MOD> factor() #Mod(2) 
+  )*
+}
+
+void factor() #void : { Token t; } 
+{
+    t=<INTEGER> { jjtThis.value = t.image; } #IntLit
+  | t=<FLOAT_LIT> { jjtThis.value = t.image; } #FloatLit
+  | t=<STRING_LITERAL> { jjtThis.value = t.image.substring(1, t.image.length()-1); } #StringLit
+  | <TRUE> #True
+  | <FALSE> #False
+  | <LEN> "(" exp() ")" #Len(1)
+  | LOOKAHEAD(2) appel_fonc() 
+  | lvalue() [ ( <INC> #Inc(1) | <DEC> #Dec(1) ) ]
+  | "(" exp() ")" 
+  | <NOT> factor() #Not(1)
+  | <MINUS> factor() #UnaryMinus(1)
+}
+
+void lvalue() #void : {} // On ne crée pas de noeud intermédiaire inutile, soit Ident, soit ArrayAccess
+{
+  // Astuce JJTree : On capture l'identifiant, et SI il y a un index, on enveloppe le tout dans ArrayAccess
+  Ident() 
+  [ "[" exp() "]" #ArrayAccess(2) ]
+}
+
+/* BLOCS DE CONTROLE */
+
+void if_stmt() #If : {} 
+{
+  <IF> "(" exp() ")" block()
+  [ <ELSE> block() ]
+}
+
+void while_stmt() #While : {} 
+{
+  <WHILE> "(" exp() ")" block()
+}
+
+void return_stmt() #Return : {} 
+{
+  <RETURN> [ exp() ] ";"
+}
+
+void print_stmt() #Print : {} 
+{
+  <PRINT> "(" exp() ")" ";"
+}
+
+void block() #Block : {} 
+{
+  "{"
+  ( LOOKAHEAD(2) decl_var() )*
+  ( instr() )*
+  "}"
+}
+
+/* FONCTIONS ET PROCEDURES */
+
+void fonc() #Function : {} 
+{
+  <FUNC> Type() Ident() "(" [ params() ] ")" 
+  block() // Réutilisation du block pour le corps de la fonction
+}
+
+void proc() #Procedure : {} 
+{
+  <PROC> Ident() "(" [ params() ] ")" 
+  block()
+}
+
+void params() #Params : {} 
+{
+  param() ( "," param() )*
+}
+
+void param() #Param : {} 
+{
+  Type() Ident()
+}
+
+/* APPELS */
+
+void appel_fonc() #FuncCall : {} 
+{
+  Ident() "(" [ args() ] ")"
+}
+
+void appel_proc() #ProcCall : {} 
+{
+  Ident() "(" [ args() ] ")" ";"
+}
+
+void args() #Args : {} 
+{
+  exp() ( "," exp() )*
+}

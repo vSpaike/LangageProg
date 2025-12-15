@@ -1,0 +1,27 @@
+program Example5_Priority;
+
+func float calc(float f_val) {
+    return f_val * 2.0;
+}
+
+main {
+    // Test de priorité : Multiplication avant Addition
+    // Attendu : 2 * 3 = 6, puis 1 + 6 = 7
+    int result1 = 1 + 2 * 3;
+    
+    // Test de parenthèses : Addition avant Multiplication
+    // Attendu : 1 + 2 = 3, puis 3 * 3 = 9
+    int result2 = (1 + 2) * 3;
+    
+    // Test de division entière (les entiers restent des entiers)
+    int result3 = 10 / 3; // 3 (division entière)
+    
+    // Test de flottants et appel de fonction
+    float f_res = 10.5;
+    f_res = calc(f_res + 1.5); // calc(12.0), retourne 24.0
+
+    print(result1); // Attendu : 7
+    print(result2); // Attendu : 9
+    print(result3); // Attendu : 3
+    print(f_res);   // Attendu : 24.0
+}

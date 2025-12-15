@@ -1,0 +1,29 @@
+program Example4_Functions;
+
+// 1. Fonction (avec return)
+func int Add(int a, int b) {
+    int result = a + b;
+    return result;
+}
+
+// 2. Procédure (sans return)
+proc PrintAndModify(int val) {
+    print(val);
+    val = val * 2; // Modification locale, n'affecte pas l'appelant (passage par valeur)
+}
+
+main {
+    int x = 10;
+    int y = 7;
+    int z;
+
+    // Appel de fonction (func)
+    z = Add(x, y); // z = 17
+    print(z);      // Attendu : 17
+
+    // Appel de procédure (proc)
+    PrintAndModify(x); // Affiche 10
+    
+    // x n'est pas modifié par la procédure (scope différent)
+    print(x);      // Attendu : 10
+}

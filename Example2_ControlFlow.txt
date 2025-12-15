@@ -1,0 +1,35 @@
+program Example2_ControlFlow;
+
+main {
+    int x = 20;
+    int y = 5;
+    boolean is_large;
+    boolean is_prime_test;
+
+    // IF/ELSE simple
+    if (x > 10) {
+        print(1);
+        is_large = true;
+    } else {
+        print(0);
+        is_large = false;
+    }
+
+    // Condition composée (IF imbriqué dans le ELSE)
+    if (x < y) {
+        is_prime_test = false;
+    } else {
+        if (x == 20 && y == 5) {
+            is_prime_test = true;
+        } else {
+            is_prime_test = false;
+        }
+    }
+    
+    // Affichage des résultats
+    if (is_large || is_prime_test) {
+        print(100); // Exécuté car is_large est true
+    } else {
+        print(50);
+    }
+}
