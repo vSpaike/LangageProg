@@ -1,11 +1,11 @@
 package ast;
 
-public class LValueNode extends Node {
-    public String name;
+public class ArrayAccessNode extends Node {
+    public String arrayName;
     public Node index;
 
-    public LValueNode(String name, Node index) {
-        this.name = name;
+    public ArrayAccessNode(String arrayName, Node index) {
+        this.arrayName = arrayName;
         this.index = index;
     }
 
@@ -15,13 +15,9 @@ public class LValueNode extends Node {
 
     @Override
     public Object evaluate(Environment env) {
-        if (index == null) {
-            return env.get(name);
-        }
-        
-        Object arrayObj = env.get(name);
+        Object arrayObj = env.get(arrayName);
         if (!(arrayObj instanceof Object[])) {
-            throw new RuntimeException(name + " n'est pas un tableau");
+            throw new RuntimeException(arrayName + " n'est pas un tableau");
         }
         Object[] array = (Object[]) arrayObj;
         Object indexObj = index.evaluate(env);

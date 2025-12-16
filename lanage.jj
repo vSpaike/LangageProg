@@ -300,11 +300,14 @@ Node term() : {
 Node factor() : {
   Token num;
   Node expr;
+  List<Node> elements;
 } {
   num = <INTEGER> { return new IntLitNode(Integer.parseInt(num.image)); }
   | num = <FLOAT_LIT> { return new FloatLitNode(Float.parseFloat(num.image)); }
   | <TRUE> { return new BoolLitNode(true); }
   | <FALSE> { return new BoolLitNode(false); }
+  | "{" elements = array_elements() "}" { return new ArrayLitNode(elements); }
+  | <LEN> "(" expr = exp() ")" { return new FuncCallNode("len", java.util.Arrays.asList(expr)); }
   | LOOKAHEAD(2) expr = appel_fonc() { return expr; }
   | expr = lvalue() { return expr; }
   | "(" expr = exp() ")" { return expr; }
@@ -478,5 +481,18 @@ List<Node> arguments() : {
   ( "," expr = exp() { args.add(expr); } )*
   {
     return args;
+  }
+}
+
+// array_elements = [ exp, { ",", exp } ] ;
+List<Node> array_elements() : {
+  List<Node> elements = new ArrayList<>();
+  Node expr;
+} {
+  [ expr = exp() { elements.add(expr); }
+    ( "," expr = exp() { elements.add(expr); } )*
+  ]
+  {
+    return elements;
   }
 }

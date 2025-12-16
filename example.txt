@@ -5,7 +5,7 @@ program Example;
 var
   int x = 10;
   int y = 5;
-
+  int tab = [1,2,3,4];
 func int addition(int a, int b) {
   int somme = a + b;
   return somme;
@@ -14,6 +14,9 @@ func int addition(int a, int b) {
 proc afficher_result(int val) {
   print(val);
 }
+/* Ceci est aussi un commentaire
+ sur plusieurs lignes
+*/
 
 main {
   int z;
@@ -35,5 +38,6 @@ main {
 
   // Ceci est aussi un commentaire
   afficher_result(z);
+  print
 
 }

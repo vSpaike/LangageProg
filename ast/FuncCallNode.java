@@ -1,4 +1,5 @@
 package ast;
+
 import java.util.*;
 
 public class FuncCallNode extends Node {
@@ -12,13 +13,24 @@ public class FuncCallNode extends Node {
 
     @Override
     public void execute(Environment env) {
-        evaluate(env); 
+        evaluate(env);
     }
 
     @Override
     public Object evaluate(Environment env) {
-        FunctionNode f = env.getFunction(name);
+        // Fonction intégrée len() pour obtenir la taille d'un tableau
+        if (name.equals("len")) {
+            if (args.size() != 1) {
+                throw new RuntimeException("len() prend exactement 1 argument");
+            }
+            Object arg = args.get(0).evaluate(env);
+            if (arg instanceof Object[]) {
+                return ((Object[]) arg).length;
+            }
+            throw new RuntimeException("len() ne peut être appliqué qu'à un tableau");
+        }
 
+        FunctionNode f = env.getFunction(name);
 
         Environment local = new Environment(env);
 
@@ -28,7 +40,8 @@ public class FuncCallNode extends Node {
             local.define(p.name, value);
         }
 
-        for (VarDeclNode v : f.vars) v.execute(local);
+        for (VarDeclNode v : f.vars)
+            v.execute(local);
 
         for (InstrNode instr : f.instrs) {
             if (instr instanceof ReturnNode r) {
