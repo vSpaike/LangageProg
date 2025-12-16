@@ -13,7 +13,7 @@ public class MiniLangParser {
     MiniLangParser parser = new MiniLangParser(System.in);
     ProgramNode prog = parser.prog();
     System.out.println("Parsing réussi !");
-    prog.execute();  // Interprétation
+    prog.execute(null);  // Interprétation
   }
 }
 PARSER_END(MiniLangParser)
